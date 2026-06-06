@@ -879,30 +879,17 @@ jobs:
           SUBLEVEL=$(grep '^SUBLEVEL *=' Makefile | head -n1 | cut -d= -f2 | tr -d ' ')
 
           if [ "$KERNEL_VERSION" = "6.12" ]; then
-            echo "🔧 修复 SukiSU Ultra super_access.c 中 cb_mutex 在 6.12 内核中已被移除的兼容性问题..."
+            echo "🔧 修复 SukiSU Ultra 6.12 内核兼容性..."
+
+            # 修复 super_access.c: cb_mutex 在 6.12 中已移除
             sed -i '/DEFINE_MEMBER(netlink_kernel_cfg, cb_mutex)/i #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 12, 0)' ./drivers/kernelsu/kpm/super_access.c
             sed -i '/DEFINE_MEMBER(netlink_kernel_cfg, cb_mutex)/a #endif' ./drivers/kernelsu/kpm/super_access.c
-            echo "cb_mutex 版本守卫已添加"
-          fi
+            echo "  ✓ cb_mutex 版本守卫已添加"
 
-          if [ -d "../../KernelSU/uapi" ] && [ ! -d "./drivers/kernelsu/uapi" ]; then
-            echo "🔧 复制 uapi 头文件目录 (main 分支需要)..."
-            mkdir -p ./drivers/kernelsu/uapi/
-            cp -f ../../KernelSU/uapi/*.h ./drivers/kernelsu/uapi/
-            echo "uapi 头文件已复制: $(ls ./drivers/kernelsu/uapi/)"
-          fi
-
-          if [ -L "./drivers/kernelsu/include" ] || [ -d "./drivers/kernelsu/include" ]; then
-            echo "🔧 替换 include 符号链接为实际目录 (修复路径解析)..."
-            rm -rf ./drivers/kernelsu/include
-            cp -r ../../KernelSU/kernel/include ./drivers/kernelsu/include
-            echo "include 目录已替换为实际文件"
-          fi
-
-          if [ -f "./drivers/kernelsu/Kbuild" ]; then
-            echo "🔧 为 Kbuild 添加备用 include 路径..."
-            echo 'ccflags-y += -I$(srctree)/../KernelSU/kernel/include' >> ./drivers/kernelsu/Kbuild
-            echo "Kbuild 备用路径已添加"
+            # 修复 lsm_hook.c: security_add_hooks 第三参数在 6.12 从 char* 改为 struct lsm_id*
+            sed -i '/^void __init ksu_lsm_hook_init/i #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)\nstatic struct lsm_id ksu_lsm_id = {\n    .name = "ksu",\n    .flags = 0,\n};\n#endif\n' ./drivers/kernelsu/hook/lsm_hook.c
+            sed -i 's|security_add_hooks(ksu_hooks, ARRAY_SIZE(ksu_hooks), "ksu");|security_add_hooks(ksu_hooks, ARRAY_SIZE(ksu_hooks), \&ksu_lsm_id);|' ./drivers/kernelsu/hook/lsm_hook.c
+            echo "  ✓ security_add_hooks lsm_id 适配已添加"
           fi
 
           if [ "$KMI" == "android13-5.15" ] && [ "$SUBLEVEL" -lt 123 ]; then
