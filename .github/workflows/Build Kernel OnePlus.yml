@@ -885,6 +885,13 @@ jobs:
             echo "cb_mutex 版本守卫已添加"
           fi
 
+          if [ -f "./drivers/kernelsu/supercall/supercall.h" ] && [ ! -d "./drivers/kernelsu/uapi" ]; then
+            echo "🔧 创建 uapi 目录并链接 supercall.h (main 分支需要)..."
+            mkdir -p ./drivers/kernelsu/uapi/
+            cp ./drivers/kernelsu/supercall/supercall.h ./drivers/kernelsu/uapi/supercall.h
+            echo "uapi/supercall.h 已创建"
+          fi
+
           if [ "$KMI" == "android13-5.15" ] && [ "$SUBLEVEL" -lt 123 ]; then
             echo "修复内核版本为5.15.0~5.15.123仅支持旧版C库造成的一些bug"
             cp ../../Action-Build/patches/fix_5.15.legacy ./fix_5.15.legacy.patch
