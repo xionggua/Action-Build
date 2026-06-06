@@ -875,6 +875,13 @@ jobs:
           cd ./common
           SUBLEVEL=$(grep '^SUBLEVEL *=' Makefile | head -n1 | cut -d= -f2 | tr -d ' ')
 
+          if [ "$KERNEL_VERSION" = "6.12" ]; then
+            echo "🔧 修复 SukiSU Ultra super_access.c 中 cb_mutex 在 6.12 内核中已被移除的兼容性问题..."
+            sed -i '/DEFINE_MEMBER(netlink_kernel_cfg, cb_mutex)/i #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 12, 0)' ./drivers/kernelsu/kpm/super_access.c
+            sed -i '/DEFINE_MEMBER(netlink_kernel_cfg, cb_mutex)/a #endif' ./drivers/kernelsu/kpm/super_access.c
+            echo "cb_mutex 版本守卫已添加"
+          fi
+
           if [ "$KMI" == "android13-5.15" ] && [ "$SUBLEVEL" -lt 123 ]; then
             echo "修复内核版本为5.15.0~5.15.123仅支持旧版C库造成的一些bug"
             cp ../../Action-Build/patches/fix_5.15.legacy ./fix_5.15.legacy.patch
