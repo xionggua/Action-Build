@@ -885,11 +885,24 @@ jobs:
             echo "cb_mutex 版本守卫已添加"
           fi
 
-          if [ -d "../KernelSU/uapi" ] && [ ! -d "./drivers/kernelsu/uapi" ]; then
+          if [ -d "../../KernelSU/uapi" ] && [ ! -d "./drivers/kernelsu/uapi" ]; then
             echo "🔧 复制 uapi 头文件目录 (main 分支需要)..."
             mkdir -p ./drivers/kernelsu/uapi/
-            cp -f ../KernelSU/uapi/*.h ./drivers/kernelsu/uapi/
+            cp -f ../../KernelSU/uapi/*.h ./drivers/kernelsu/uapi/
             echo "uapi 头文件已复制: $(ls ./drivers/kernelsu/uapi/)"
+          fi
+
+          if [ -L "./drivers/kernelsu/include" ] || [ -d "./drivers/kernelsu/include" ]; then
+            echo "🔧 替换 include 符号链接为实际目录 (修复路径解析)..."
+            rm -rf ./drivers/kernelsu/include
+            cp -r ../../KernelSU/kernel/include ./drivers/kernelsu/include
+            echo "include 目录已替换为实际文件"
+          fi
+
+          if [ -f "./drivers/kernelsu/Kbuild" ]; then
+            echo "🔧 为 Kbuild 添加备用 include 路径..."
+            echo 'ccflags-y += -I$(srctree)/../KernelSU/kernel/include' >> ./drivers/kernelsu/Kbuild
+            echo "Kbuild 备用路径已添加"
           fi
 
           if [ "$KMI" == "android13-5.15" ] && [ "$SUBLEVEL" -lt 123 ]; then
