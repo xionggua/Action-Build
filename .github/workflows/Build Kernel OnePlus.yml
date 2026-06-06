@@ -803,11 +803,14 @@ jobs:
           ESC_VERSION_FULL=$(printf '%s' "$VERSION_FULL" | sed 's/[&|\\/]/\\&/g')
           ESC_KSU_VERSION_TAG=$(printf '%s' "$KSU_VERSION_TAG" | sed 's/[&|\\/]/\\&/g')
 
-          if grep -q '^KSU_VERSION_FULL := ' kernel/Makefile; then
-            sed -i "s|^KSU_VERSION_FULL := .*|KSU_VERSION_FULL := $ESC_VERSION_FULL|" kernel/Makefile
-          else
+          MK_TARGET="kernel/Makefile"
+          [ -f "kernel/Kbuild" ] && MK_TARGET="kernel/Kbuild"
+
+          if grep -q '^KSU_VERSION_FULL' "$MK_TARGET"; then
+            sed -i "s|^KSU_VERSION_FULL.*|KSU_VERSION_FULL := $ESC_VERSION_FULL|" "$MK_TARGET"
+          elif grep -q '^REPO_OWNER' "$MK_TARGET"; then
             awk -v full="$VERSION_FULL" '
-              /^REPO_OWNER :=/ && !done {
+              /^REPO_OWNER/ && !done {
                 print
                 print ""
                 print "KSU_VERSION_FULL := " full
@@ -815,18 +818,18 @@ jobs:
                 next
               }
               { print }
-            ' kernel/Makefile > kernel/Makefile.tmp && mv kernel/Makefile.tmp kernel/Makefile
+            ' "$MK_TARGET" > "${MK_TARGET}.tmp" && mv "${MK_TARGET}.tmp" "$MK_TARGET"
           fi
 
-          if grep -q '^KSU_VERSION_API := ' kernel/Makefile; then
-            sed -i "s|^KSU_VERSION_API := .*|KSU_VERSION_API := $ESC_KSU_VERSION_TAG|" kernel/Makefile
+          if grep -q '^KSU_VERSION_API' "$MK_TARGET"; then
+            sed -i "s|^KSU_VERSION_API.*|KSU_VERSION_API := $ESC_KSU_VERSION_TAG|" "$MK_TARGET"
           fi
 
           KSU_VERSION=$(expr $(git rev-list --count "$MANAGER_BRANCH" 2>/dev/null || echo 13000) + 37185)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
 
-          echo "::group::最终 Makefile 中版本信息及部分调试结果预览"
-          grep -nE '^(REPO_OWNER|REPO_NAME|REPO_BRANCH|KSU_VERSION_API|KSU_VERSION_FULL|VERSION_TAG|GIT_BIN|CURL_BIN)' kernel/Makefile
+          echo "::group::最终 Kbuild/Makefile 中版本信息及部分调试结果预览"
+          grep -nE '^(REPO_OWNER|REPO_NAME|REPO_BRANCH|KSU_VERSION_API|KSU_VERSION_FULL|VERSION_TAG|GIT_BIN|CURL_BIN)' "$MK_TARGET" || true
           echo "::endgroup::"
 
       - name: Apply Patches SukiSU Ultra
