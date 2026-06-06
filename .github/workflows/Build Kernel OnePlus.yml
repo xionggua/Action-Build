@@ -881,13 +881,14 @@ jobs:
           if [ "$KERNEL_VERSION" = "6.12" ]; then
             echo "🔧 修复 SukiSU Ultra 6.12 内核兼容性..."
 
-            # 修复 super_access.c: cb_mutex 在 6.12 中已移除
+            # 1. 修复 super_access.c: cb_mutex 在 6.6~6.11 之间已从 netlink_kernel_cfg 移除
             sed -i '/DEFINE_MEMBER(netlink_kernel_cfg, cb_mutex)/i #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 12, 0)' ./drivers/kernelsu/kpm/super_access.c
             sed -i '/DEFINE_MEMBER(netlink_kernel_cfg, cb_mutex)/a #endif' ./drivers/kernelsu/kpm/super_access.c
             echo "  ✓ cb_mutex 版本守卫已添加"
 
-            # 修复 lsm_hook.c: security_add_hooks 第三参数在 6.12 从 char* 改为 struct lsm_id*
-            sed -i '/^void __init ksu_lsm_hook_init/i #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)\nstatic struct lsm_id ksu_lsm_id = {\n    .name = "ksu",\n    .flags = 0,\n};\n#endif\n' ./drivers/kernelsu/hook/lsm_hook.c
+            # 2. 修复 lsm_hook.c: security_add_hooks 第三参数从 6.8 起改为 struct lsm_id*
+            #    struct lsm_id 仅有 .name (const char*) 和 .id (u64) 两个字段
+            sed -i '/^void __init ksu_lsm_hook_init/i #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0)\nstatic struct lsm_id ksu_lsm_id = {\n    .name = "ksu",\n    .id = 0,\n};\n#endif\n' ./drivers/kernelsu/hook/lsm_hook.c
             sed -i 's|security_add_hooks(ksu_hooks, ARRAY_SIZE(ksu_hooks), "ksu");|security_add_hooks(ksu_hooks, ARRAY_SIZE(ksu_hooks), \&ksu_lsm_id);|' ./drivers/kernelsu/hook/lsm_hook.c
             echo "  ✓ security_add_hooks lsm_id 适配已添加"
           fi
